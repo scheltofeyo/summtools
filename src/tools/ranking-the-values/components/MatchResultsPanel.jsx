@@ -5,7 +5,9 @@ export default function MatchResultsPanel({ submissions, values }) {
   const [expandedIndex, setExpandedIndex] = useState(null)
   const [algorithm, setAlgorithm] = useState('greedy')
 
-  if (submissions.length < 2) {
+  const completedSubmissions = submissions.filter((s) => s.status !== 'in_progress')
+
+  if (completedSubmissions.length < 2) {
     return (
       <p className="text-sm text-neutral-400 py-4">
         Er zijn minimaal 2 inzendingen nodig om matches te berekenen.
@@ -14,7 +16,7 @@ export default function MatchResultsPanel({ submissions, values }) {
   }
 
   const findPairs = algorithm === 'greedy' ? findGreedyPairs : findBalancedPairs
-  const { pairs, unmatched } = findPairs(submissions)
+  const { pairs, unmatched } = findPairs(completedSubmissions)
   const valueMap = Object.fromEntries(values.map((v) => [v.id, v]))
 
   function switchAlgorithm(alg) {

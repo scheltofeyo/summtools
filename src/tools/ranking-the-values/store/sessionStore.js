@@ -23,6 +23,7 @@ function toCamelSubmission(row) {
     participantName: row.participant_name,
     participantEmail: row.participant_email,
     rankings: row.rankings,
+    status: row.status ?? 'completed',
     submittedAt: row.submitted_at,
   }
 }
@@ -173,6 +174,41 @@ export async function createSubmission({ sessionId, participantName, participant
     return { error: error.message }
   }
 
+  return toCamelSubmission(data)
+}
+
+export async function createPendingSubmission({ sessionId, participantName, participantEmail }) {
+  const { data, error } = await supabase
+    .from('submissions')
+    .insert({
+      session_id: sessionId,
+      participant_name: participantName,
+      participant_email: participantEmail,
+      rankings: null,
+      status: 'in_progress',
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return { error: 'Er is al een inzending met dit e-mailadres.' }
+    }
+    return { error: error.message }
+  }
+
+  return toCamelSubmission(data)
+}
+
+export async function completeSubmission(id, rankings) {
+  const { data, error } = await supabase
+    .from('submissions')
+    .update({ rankings, status: 'completed', submitted_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
   return toCamelSubmission(data)
 }
 

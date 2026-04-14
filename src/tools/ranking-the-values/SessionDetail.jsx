@@ -47,6 +47,20 @@ export default function SessionDetail() {
           setSubmissions((prev) => [...prev, toCamelSubmission(payload.new)])
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'submissions',
+          filter: `session_id=eq.${session.id}`,
+        },
+        (payload) => {
+          setSubmissions((prev) =>
+            prev.map((s) => s.id === payload.new.id ? toCamelSubmission(payload.new) : s)
+          )
+        }
+      )
       .subscribe()
 
     return () => supabase.removeChannel(channel)
@@ -211,7 +225,7 @@ export default function SessionDetail() {
 
           <section className="bg-white border border-neutral-200 rounded-xl p-5">
             <h2 className="text-sm font-semibold text-neutral-700 mb-3">
-              Inzendingen ({submissions.length})
+              Deelnemers ({submissions.length})
             </h2>
             <SubmissionsList submissions={submissions} values={session.values} />
           </section>

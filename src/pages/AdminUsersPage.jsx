@@ -60,10 +60,9 @@ export default function AdminUsersPage() {
 
     setInviteSaving(true)
 
-    // Create user via Supabase Auth admin API (uses service_role via Edge Function or direct)
-    // Since we can't use admin API from client, we create via signUp + profile update
-    // For now, use the admin approach via the service role key stored server-side
-    // Workaround: use supabase.auth.admin if available, otherwise regular signup
+    // Save current admin session before signUp (signUp auto-logs in the new user)
+    const { data: { session: adminSession } } = await supabase.auth.getSession()
+
     const { data, error } = await supabase.auth.signUp({
       email: inviteEmail.trim(),
       password: invitePassword,
@@ -71,6 +70,14 @@ export default function AdminUsersPage() {
         data: { full_name: inviteName.trim() },
       },
     })
+
+    // Restore admin session immediately
+    if (adminSession) {
+      await supabase.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token,
+      })
+    }
 
     if (error) {
       setInviteMessage({ type: 'error', text: error.message })
@@ -134,13 +141,8 @@ export default function AdminUsersPage() {
 
     setMessage(null)
 
-    // Delete from auth.users (cascades to profiles)
-    // We need service role for this — use a direct delete on profiles
-    // The auth user will remain but without a profile (effectively locked out)
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', profile.id)
+    // Delete from auth.users via database function (cascades to profiles)
+    const { error } = await supabase.rpc('delete_user', { user_id: profile.id })
 
     if (error) {
       setMessage({ type: 'error', text: error.message })

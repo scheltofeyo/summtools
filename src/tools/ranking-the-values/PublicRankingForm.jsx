@@ -4,7 +4,8 @@ import {
   getSessionByShareCode,
   getSubmissionByEmail,
   getSubmissionsBySessionId,
-  createSubmission,
+  createPendingSubmission,
+  completeSubmission,
   toCamelSession,
 } from './store/sessionStore'
 import { supabase } from '../../lib/supabase'
@@ -129,20 +130,9 @@ function StepIdentification({ name, setName, email, setEmail, error, onContinue 
 // Step 2 — Ranking
 // ---------------------------------------------------------------------------
 
-function StepRanking({ session, order, setOrder, submitting, error, onBack, onSubmit }) {
+function StepRanking({ session, order, setOrder, submitting, error, onSubmit }) {
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-brand transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-        Terug
-      </button>
-
       <div className="bg-brand-lightest border border-brand/10 rounded-xl p-4">
         <p className="text-sm text-neutral-700">
           <strong>Rangschik de waarden</strong> van het meest naar het minst van toepassing op jou.
@@ -254,9 +244,10 @@ function StepMatch({ shareCode, session: initialSession, submission }) {
 
   // Session is closed — compute and show match
   const { myPair, isUnmatched } = (() => {
-    if (submissions.length < 2) return { myPair: null, isUnmatched: false }
+    const completed = submissions.filter((s) => s.status !== 'in_progress')
+    if (completed.length < 2) return { myPair: null, isUnmatched: false }
 
-    const { pairs, unmatched } = findBalancedPairs(submissions)
+    const { pairs, unmatched } = findBalancedPairs(completed)
 
     if (unmatched && unmatched.id === submission.id) {
       return { myPair: null, isUnmatched: true }
@@ -413,6 +404,9 @@ export default function PublicRankingForm() {
   const [order, setOrder] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
+  // Step 2 → 3 bridge
+  const [pendingSubmissionId, setPendingSubmissionId] = useState(null)
+
   // Step 3
   const [existingSubmission, setExistingSubmission] = useState(null)
 
@@ -491,23 +485,33 @@ export default function PublicRankingForm() {
     const existing = await getSubmissionByEmail(session.id, email.trim())
 
     if (existing) {
-      // Has submission → go to step 3 (shows match or waiting state)
-      setExistingSubmission(existing)
-      setCurrentStep(3)
+      if (existing.status === 'in_progress') {
+        // Resume in-progress submission
+        setPendingSubmissionId(existing.id)
+        setCurrentStep(2)
+      } else {
+        // Completed submission → go to step 3
+        setExistingSubmission(existing)
+        setCurrentStep(3)
+      }
     } else {
       if (session.status === 'closed') {
-        // No submission + session closed
         setError('Deze sessie is gesloten. Je kunt helaas niet meer deelnemen.')
       } else {
-        // No submission + session open → ranking step
+        // Create pending submission so facilitator sees this participant
+        const pending = await createPendingSubmission({
+          sessionId: session.id,
+          participantName: name.trim(),
+          participantEmail: email.trim(),
+        })
+        if (pending.error) {
+          setError(pending.error)
+          return
+        }
+        setPendingSubmissionId(pending.id)
         setCurrentStep(2)
       }
     }
-  }
-
-  function handleStep2Back() {
-    setError(null)
-    setCurrentStep(1)
   }
 
   async function handleStep2Submit() {
@@ -521,12 +525,7 @@ export default function PublicRankingForm() {
     }
 
     setSubmitting(true)
-    const result = await createSubmission({
-      sessionId: session.id,
-      participantName: name.trim(),
-      participantEmail: email.trim(),
-      rankings: order,
-    })
+    const result = await completeSubmission(pendingSubmissionId, order)
 
     if (result.error) {
       setError(result.error)
@@ -572,7 +571,6 @@ export default function PublicRankingForm() {
           setOrder={setOrder}
           submitting={submitting}
           error={error}
-          onBack={handleStep2Back}
           onSubmit={handleStep2Submit}
         />
       )}
