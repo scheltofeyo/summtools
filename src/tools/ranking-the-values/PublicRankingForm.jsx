@@ -9,7 +9,7 @@ import {
   toCamelSession,
 } from './store/sessionStore'
 import { supabase } from '../../lib/supabase'
-import { findBalancedPairs, normalizeDistance } from './utils/matching'
+import { findBalancedPairs } from './utils/matching'
 import ValueRankingList from './components/ValueRankingList'
 
 // ---------------------------------------------------------------------------
@@ -307,8 +307,6 @@ function StepMatch({ shareCode, session: initialSession, submission }) {
   const isMe1 = myPair.participant1.id === submission.id
   const me = isMe1 ? myPair.participant1 : myPair.participant2
   const partner = isMe1 ? myPair.participant2 : myPair.participant1
-  const oppositionPct = normalizeDistance(myPair.distance, session.values.length)
-
   return (
     <div className="space-y-5">
       {/* Match header */}
@@ -335,20 +333,6 @@ function StepMatch({ shareCode, session: initialSession, submission }) {
           <span className="text-neutral-400 mx-1.5">&</span>
           <span className="font-medium">{partner.participantName}</span>
         </p>
-
-        {/* Opposition score */}
-        <div className="mt-4">
-          <span className="text-3xl font-bold text-brand">{oppositionPct}%</span>
-          <p className="text-xs text-neutral-400 mt-1">tegengesteld</p>
-        </div>
-
-        {/* Opposition bar */}
-        <div className="mt-4 w-full bg-neutral-100 rounded-full h-2">
-          <div
-            className="bg-brand h-2 rounded-full transition-all"
-            style={{ width: `${oppositionPct}%` }}
-          />
-        </div>
       </div>
 
       {/* Side-by-side rankings */}
