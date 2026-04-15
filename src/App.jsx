@@ -9,6 +9,8 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import NotFound from './pages/NotFound'
 import PublicHome from './pages/public/PublicHome'
 import { rankingTheValuesRoutes, rankingTheValuesPublicRoutes } from './tools/ranking-the-values/routes'
+import { spinTheWheelRoutes } from './tools/spin-the-wheel/routes'
+import FullscreenLayout from './layouts/FullscreenLayout'
 
 export default function App() {
   return (
@@ -29,6 +31,17 @@ export default function App() {
         <Route path="/admin/gebruikers" element={<AdminUsersPage />} />
         {/* Register tool routes here */}
         {rankingTheValuesRoutes}
+      </Route>
+
+      {/* Fullscreen tool routes (protected, no navbar) */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <FullscreenLayout />
+          </ProtectedRoute>
+        }
+      >
+        {spinTheWheelRoutes}
       </Route>
 
       {/* Public routes (workshop participants, no login required) */}
