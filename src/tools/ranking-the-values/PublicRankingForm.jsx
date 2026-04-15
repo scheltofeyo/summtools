@@ -92,7 +92,7 @@ function StepIdentification({ name, setName, email, setEmail, error, onContinue 
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Je volledige naam"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-sm focus:outline-2 focus:outline-brand"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-base focus:outline-2 focus:outline-brand"
           />
         </div>
         <div>
@@ -104,7 +104,7 @@ function StepIdentification({ name, setName, email, setEmail, error, onContinue 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="je@voorbeeld.nl"
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-sm focus:outline-2 focus:outline-brand"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-base focus:outline-2 focus:outline-brand"
           />
         </div>
       </div>
@@ -176,9 +176,28 @@ function StepRanking({ session, order, setOrder, submitting, error, onSubmit }) 
 // Step 3 — Je match
 // ---------------------------------------------------------------------------
 
+const MATCH_PROMPTS = [
+  'Zoek je match op en bespreek: welke waarde vind jij het sterkst terug in je eigen werk?',
+  'Ga met je match in gesprek. Vertel: hoe merk je jouw topwaarde in de praktijk?',
+  'Zoek elkaar op! Bespreek samen wat jullie belangrijkste waarden concreet betekenen in het werk.',
+  'Loop naar je match toe. Vraag: in welke situaties komt jouw sterkste waarde het meest naar voren?',
+  'Zoek je match op en deel: waar ben je trots op als het gaat om hoe je waarden toepast?',
+  'Ga bij je match zitten. Bespreek: welke waarde zou je graag nog sterker willen maken in je werk?',
+  'Zoek elkaar op en vergelijk jullie lijstjes. Bespreek wat de verschillen en overeenkomsten jullie vertellen.',
+  'Vind je match in de ruimte. Vraag: wat betekent jouw nummer 1 waarde in de dagelijkse samenwerking?',
+  'Zoek je match op! Bespreek samen: hoe helpt jouw sterkste waarde het team?',
+  'Ga naar je match toe en wissel uit: welke waarde geeft je de meeste energie in je werk?',
+  'Zoek je match op. Bespreek: wanneer voelde je jouw topwaarde het sterkst de afgelopen tijd?',
+  'Loop naar je match. Vertel elkaar een concreet voorbeeld van hoe je jouw belangrijkste waarde toepast.',
+  'Zoek elkaar op! Vraag je match: welke waarde zou je meer aandacht willen geven?',
+  'Ga in gesprek met je match. Bespreek: hoe beïnvloeden jullie waarden de manier waarop jullie samenwerken?',
+  'Zoek je match op en ontdek: wat kunnen jullie van elkaars kijk op de bedrijfswaarden leren?',
+]
+
 function StepMatch({ shareCode, session: initialSession, submission }) {
   const [session, setSession] = useState(initialSession)
   const [submissions, setSubmissions] = useState(null)
+  const matchPrompt = useMemo(() => MATCH_PROMPTS[Math.floor(Math.random() * MATCH_PROMPTS.length)], [])
 
   // Realtime: listen for session status change (closed)
   useEffect(() => {
@@ -312,7 +331,7 @@ function StepMatch({ shareCode, session: initialSession, submission }) {
       {/* Match header */}
       <div className="bg-white border border-neutral-200 rounded-xl p-5 text-center">
         <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-4">
-          Jouw tegenpool
+          Jouw match
         </p>
 
         {/* Avatars */}
@@ -333,6 +352,9 @@ function StepMatch({ shareCode, session: initialSession, submission }) {
           <span className="text-neutral-400 mx-1.5">&</span>
           <span className="font-medium">{partner.participantName}</span>
         </p>
+
+        {/* Conversation prompt */}
+        <p className="text-xs text-neutral-400 mt-3 leading-relaxed">{matchPrompt}</p>
       </div>
 
       {/* Side-by-side rankings */}
@@ -402,7 +424,13 @@ export default function PublicRankingForm() {
       const s = await getSessionByShareCode(shareCode)
       setSession(s)
       if (s) {
-        setOrder(s.values.map((v) => v.id))
+        // Shuffle value order per participant to avoid order bias
+        const ids = s.values.map((v) => v.id)
+        for (let i = ids.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [ids[i], ids[j]] = [ids[j], ids[i]]
+        }
+        setOrder(ids)
       }
       setLoading(false)
     }
