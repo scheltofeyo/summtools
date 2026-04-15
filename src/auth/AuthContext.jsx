@@ -3,20 +3,39 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-async function fetchProfileData(authUser) {
-  if (!authUser) return null
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', authUser.id)
-    .single()
-
+function fallbackProfile(authUser) {
   return {
     id: authUser.id,
     email: authUser.email,
-    name: profile?.full_name || authUser.email.split('@')[0],
-    role: profile?.role || 'member',
+    name: authUser.email.split('@')[0],
+    role: 'member',
+  }
+}
+
+async function fetchProfileData(authUser) {
+  if (!authUser) return null
+
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single()
+
+    if (error) {
+      console.warn('Failed to fetch profile, using fallback:', error.message)
+      return fallbackProfile(authUser)
+    }
+
+    return {
+      id: authUser.id,
+      email: authUser.email,
+      name: profile?.full_name || authUser.email.split('@')[0],
+      role: profile?.role || 'member',
+    }
+  } catch (err) {
+    console.warn('Profile fetch error, using fallback:', err)
+    return fallbackProfile(authUser)
   }
 }
 
@@ -34,15 +53,16 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    // Listen for auth changes (token refresh, sign out from another tab)
+    // Listen for auth changes (token refresh, sign in, sign out)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null)
           setLoading(false)
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        } else if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session?.user) {
           const profile = await fetchProfileData(session.user)
           setUser(profile)
+          setLoading(false)
         }
       }
     )
