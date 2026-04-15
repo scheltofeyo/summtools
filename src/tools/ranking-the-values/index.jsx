@@ -22,7 +22,7 @@ export default function SessionList() {
 
   useEffect(() => {
     if (!user) return
-    getSessions(user.id)
+    getSessions()
       .then(setSessions)
       .finally(() => setLoading(false))
   }, [user])
@@ -31,7 +31,7 @@ export default function SessionList() {
     if (!deleteTarget) return
     await deleteSession(deleteTarget.id)
     setDeleteTarget(null)
-    const updated = await getSessions(user.id)
+    const updated = await getSessions()
     setSessions(updated)
   }
 

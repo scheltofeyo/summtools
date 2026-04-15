@@ -32,11 +32,10 @@ function toCamelSubmission(row) {
 // Sessions
 // ============================================================
 
-export async function getSessions(userId) {
+export async function getSessions() {
   const { data, error } = await supabase
     .from('sessions')
     .select('*, submissions(count)')
-    .eq('created_by', userId)
     .order('created_at', { ascending: false })
 
   if (error) throw error

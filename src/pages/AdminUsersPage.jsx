@@ -60,37 +60,18 @@ export default function AdminUsersPage() {
 
     setInviteSaving(true)
 
-    // Save current admin session before signUp (signUp auto-logs in the new user)
-    const { data: { session: adminSession } } = await supabase.auth.getSession()
-
-    const { data, error } = await supabase.auth.signUp({
-      email: inviteEmail.trim(),
-      password: invitePassword,
-      options: {
-        data: { full_name: inviteName.trim() },
-      },
+    // Create user server-side via database function (doesn't affect current session)
+    const { data, error } = await supabase.rpc('admin_create_user', {
+      user_email: inviteEmail.trim(),
+      user_password: invitePassword,
+      user_full_name: inviteName.trim(),
+      user_role: inviteRole,
     })
-
-    // Restore admin session immediately
-    if (adminSession) {
-      await supabase.auth.setSession({
-        access_token: adminSession.access_token,
-        refresh_token: adminSession.refresh_token,
-      })
-    }
 
     if (error) {
       setInviteMessage({ type: 'error', text: error.message })
       setInviteSaving(false)
       return
-    }
-
-    // Update role if admin
-    if (inviteRole === 'admin' && data.user) {
-      await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', data.user.id)
     }
 
     setInviteSaving(false)

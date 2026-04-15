@@ -17,12 +17,18 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setIsLoading(true)
-    const result = await login(email, password)
-    setIsLoading(false)
-    if (result.success) {
-      navigate(from, { replace: true })
-    } else {
-      setError(result.error)
+    try {
+      const result = await login(email, password)
+      if (result.success) {
+        navigate(from, { replace: true })
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Submit error:', err)
+      setError('Er ging iets mis. Probeer het opnieuw.')
+    } finally {
+      setIsLoading(false)
     }
   }
 

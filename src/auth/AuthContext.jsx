@@ -51,6 +51,9 @@ export function AuthProvider({ children }) {
         setUser(profile)
       }
       setLoading(false)
+    }).catch((err) => {
+      console.warn('Failed to restore session:', err)
+      setLoading(false)
     })
 
     // Listen for auth changes (token refresh, sign in, sign out)
@@ -71,20 +74,25 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      const message = error.message === 'Invalid login credentials'
-        ? 'Ongeldige inloggegevens'
-        : error.message === 'Email not confirmed'
-          ? 'E-mail nog niet bevestigd'
-          : error.message
-      return { success: false, error: message }
-    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        const message = error.message === 'Invalid login credentials'
+          ? 'Ongeldige inloggegevens'
+          : error.message === 'Email not confirmed'
+            ? 'E-mail nog niet bevestigd'
+            : error.message
+        return { success: false, error: message }
+      }
 
-    // Fetch profile directly after login — don't rely on onAuthStateChange
-    const profile = await fetchProfileData(data.user)
-    setUser(profile)
-    return { success: true }
+      // Fetch profile directly after login — don't rely on onAuthStateChange
+      const profile = await fetchProfileData(data.user)
+      setUser(profile)
+      return { success: true }
+    } catch (err) {
+      console.error('Login error:', err)
+      return { success: false, error: 'Kan geen verbinding maken met de server. Probeer het opnieuw.' }
+    }
   }, [])
 
   const logout = useCallback(async () => {
